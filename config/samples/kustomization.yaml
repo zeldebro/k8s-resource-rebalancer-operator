@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- smart_v1_resourcerebalancer.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

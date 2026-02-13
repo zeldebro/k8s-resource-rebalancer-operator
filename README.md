@@ -1,238 +1,231 @@
-Below is your complete professional README.md (GitHub ready + interview ready).
-You can copy-paste directly.
+# **Kubernetes Resource Rebalancer Operator**
 
-⸻
 
-🚀 Kubernetes Resource Rebalancer Operator
 
-A production-ready Kubernetes Operator built using Golang + Kubebuilder that automatically detects idle pods consuming CPU and memory and safely frees cluster resources.
+This project is a custom Kubernetes operator written in Go using Kubebuilder.
 
-This operator continuously monitors workloads and rebalances cluster usage to prevent Pending pods due to insufficient CPU/memory.
+It monitors pod CPU and memory usage and automatically frees cluster resources by scaling down idle workloads.
 
-Perfect for:
-•	Kubeflow environments
-•	ML/AI workloads
-•	Multi-tenant clusters
-•	Shared Kubernetes platforms
 
-⸻
 
-📌 Problem Statement
+The main goal of this operator is to avoid situations where cluster resources are blocked by idle pods while new pods remain in pending state due to insufficient CPU or memory.
 
-In many Kubernetes clusters:
-•	Users start notebook or application pods and forget to stop them
-•	Idle pods keep reserving CPU and memory
-•	New pods fail scheduling due to Insufficient CPU/Memory
-•	Cluster resources remain blocked
-•	Manual cleanup is risky and time-consuming
+----------
 
-❗ Why TTL is not enough?
+## **Why this operator is needed**
 
-Kubernetes supports TTL (Time To Live) for pods/jobs.
 
-👉 TTL meaning
 
-TTL = Time To Live
-It defines how long a pod/job should live before automatic deletion.
+In many Kubernetes environments (especially shared clusters or Kubeflow setups):
 
-Example:
-If TTL = 24 hours
-Pod will run full 24 hours even if idle
-Resources stay reserved until TTL expires
+-   Users start pods or notebooks and forget to stop them
 
-Problem with TTL
+-   Idle pods continue reserving CPU and memory
 
-Even if TTL exists:
-•	Pod continues running until TTL finishes
-•	Resources remain blocked during that time
-•	New workloads still go Pending
-•	Cluster utilization becomes inefficient
+-   New pods fail to schedule due to lack of resources
 
-TTL frees resources late
-But cluster needs resources immediately
+-   Manual cleanup is risky and time-consuming
 
-⸻
 
-💡 Solution (What this operator does)
 
-This operator solves the problem by working in real-time.
 
-It continuously monitors only the user-defined namespace and:
-1.	Monitors CPU & memory usage using metrics-server
-2.	Detects idle pods (below threshold usage)
-3.	Adds them to internal workqueue
-4.	Safely scales down deployments
-5.	Frees cluster resources immediately
-6.	Prevents Pending pod issues
+Kubernetes TTL can delete pods after a fixed time, but resources remain reserved until TTL expires.
 
-Unlike TTL-based cleanup, this operator:
-•	Works in real-time
-•	Frees resources early
-•	Improves scheduling efficiency
-•	Supports multi-tenant namespace filtering
+This operator solves that by monitoring usage in real time and cleaning idle workloads earlier.
 
-⸻
+----------
 
-🧠 Architecture
+## **What this operator does**
 
-CR (User YAML)
-↓
-Controller (Reconcile loop)
-↓
-Metrics Scanner
-↓
-Workqueue (FIFO)
-↓
-Worker
-↓
-Scale deployment → Free resources
 
-⸻
 
-✨ Features
-•	Real-time CPU & memory monitoring
-•	Automatic idle workload detection
-•	Namespace-based filtering
-•	Workqueue-based safe processing
-•	Retry & backoff handling
-•	Production-ready logging
-•	Scales deployments safely
-•	Prevents cluster starvation
-•	Works on Kind / EKS / AKS / GKE
+The operator continuously monitors a selected namespace and:
 
-⸻
+-   Reads CPU and memory usage using metrics-server
 
-📦 Example Use Case (Kubeflow)
+-   Detects idle pods based on threshold values
 
-Kubeflow notebook pods run for long hours.
+-   Adds them to an internal work queue
 
-Problem:
-•	Users forget to stop notebooks
-•	Idle notebooks consume resources
-•	New training jobs stay Pending
+-   Finds the deployment owning that pod
 
-Solution:
-•	Operator detects low CPU usage notebooks
-•	Scales them safely
-•	Frees CPU & memory
-•	New jobs schedule successfully
+-   Scales the deployment to zero safely
 
-⸻
+-   Frees cluster resources
 
-🛠 Tech Stack
-•	Golang
-•	Kubebuilder
-•	controller-runtime
-•	client-go
-•	metrics-server API
-•	Kubernetes CRD
-•	Workqueue pattern
 
-⸻
 
-⚙️ CRD Example
 
-User deploys operator using this YAML:
+Everything runs automatically once the CR is applied.
 
+----------
+
+## **How it works (simple flow)**
+
+
+
+User creates CR YAML
+
+→ Operator reads config
+
+→ Monitors pod metrics
+
+→ Detects idle pods
+
+→ Adds to queue
+
+→ Worker processes queue
+
+→ Scales deployment to zero
+
+----------
+
+## **Tech used**
+
+-   Golang
+
+-   Kubebuilder
+
+-   controller-runtime
+
+-   client-go
+
+-   metrics-server
+
+-   Kubernetes CRD
+
+-   Workqueue pattern
+
+
+----------
+
+## **CRD Example**
+
+
+
+Apply this YAML to start monitoring:
+
+```
 apiVersion: rebalancer.dev/v1
 kind: ResourceRebalancer
 metadata:
-name: smart-rebalancer
+  name: rebalance-sample
 spec:
-userNamespace: "default"
-cpuThreshold: 50
-memoryThreshold: 500
-enableCleanup: true
+  userNamespace: "default"
+  cpuThreshold: 50
+  memoryThreshold: 500
+  enableCleanup: true
+```
 
-Parameters
+### **Fields**
 
-Field	Description
-userNamespace	Namespace to monitor
-cpuThreshold	CPU below this = idle
-memoryThreshold	Memory below this = idle
-enableCleanup	Enable auto scaling
+-   userNamespace → namespace to monitor
+
+-   cpuThreshold → below this CPU = idle
+
+-   memoryThreshold → below this memory = idle
+
+-   enableCleanup → enable automatic scaling
 
 
-⸻
+----------
 
-🚀 Getting Started
+## **How to run locally (kind cluster)**
 
-Prerequisites
-•	Go 1.22+
-•	Docker
-•	Kubernetes cluster (kind/minikube/EKS)
-•	metrics-server installed
 
-⸻
 
-🐳 Build Docker Image
+### **Build image**
 
+```
 docker build -t rebalancer:latest .
+```
 
-For kind cluster:
+### **Load into kind**
 
+```
 kind load docker-image rebalancer:latest
+```
 
+### **Install CRD**
 
-⸻
-
-📦 Install CRD
-
+```
 make install
+```
 
+### **Deploy operator**
 
-⸻
-
-🚀 Deploy Operator
-
+```
 make deploy IMG=rebalancer:latest
+```
 
+### **Apply CR**
 
-⸻
-
-📄 Apply Custom Resource
-
+```
 kubectl apply -f config/samples/
+```
 
+----------
 
-⸻
+## **Check logs**
 
-📊 Check Logs
-
+```
 kubectl logs -f deploy/k8s-resource-rebalancer-controller-manager -n k8s-resource-rebalancer
+```
 
-You should see:
+You will see logs when idle pods are detected and scaled.
 
-Cluster scanner started
-Idle pod detected
-Processing pod
-Scaling deployment
+----------
+
+## **Example test**
 
 
-⸻
 
-🧪 Test Scenario
+Create test deployment:
 
-Create test workload:
-
+```
 kubectl run test --image=nginx -n default
+```
 
-Keep CPU usage low → operator detects idle → deployment scaled.
+Keep usage low.
+
+Operator will detect idle pod and scale deployment.
+
+----------
+
+## **What I learned from this project**
+
+-   Writing Kubernetes operators using Kubebuilder
+
+-   Using workqueue and controller pattern
+
+-   Reading metrics-server data
+
+-   Handling ownerReferences (pod → replicaset → deployment)
+
+-   RBAC and cluster permissions
+
+-   Production-style retry and logging
 
 
-🤝 Contributing
+----------
 
-PRs welcome.
+## **Future improvements**
+
+-   Slack alerts
+
+-   GPU idle detection
+
+-   Prometheus metrics
+
+-   Web UI
+
+-   Multi-namespace support
 
 
-⭐ If this helped you
+----------
 
-Give a ⭐ on GitHub
-and connect on LinkedIn.
+## **Author**
 
-⸻
 
-📜 License
 
-Apache 2.0 License
-Copyright 2026
+Built as a learning + production-ready DevOps project to demonstrate Kubernetes operator development using Golang.

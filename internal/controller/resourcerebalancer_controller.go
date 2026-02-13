@@ -18,7 +18,8 @@ package controller
 
 import (
 	"context"
-	"github.com/zeldebro/k8s-resource-rebalancer-operator/internal"
+	"github.com/zeldebro/k8s-resource-rebalancer-operator/internal/scanner"
+	"github.com/zeldebro/k8s-resource-rebalancer-operator/internal/worker"
 	"k8s.io/client-go/kubernetes"
 	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
 
@@ -35,12 +36,26 @@ type ResourceRebalancerReconciler struct {
 	client.Client
 	Scheme        *runtime.Scheme
 	Clientset     *kubernetes.Clientset
-	metricsClient *metricsclient.Clientset
+	MetricsClient *metricsclient.Clientset
 }
 
-// +kubebuilder:rbac:groups=smart.smart.dev,resources=resourcerebalancers,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=smart.smart.dev,resources=resourcerebalancers/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=smart.smart.dev,resources=resourcerebalancers/finalizers,verbs=update
+// POD permission
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+
+// ReplicaSet permission (VERY IMPORTANT)
+// +kubebuilder:rbac:groups=apps,resources=replicasets,verbs=get;list;watch
+
+// Deployment permission (for scaling)
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;update;patch
+
+// Metrics permission
+// +kubebuilder:rbac:groups=metrics.k8s.io,resources=pods,verbs=get;list;watch
+
+// +kubebuilder:rbac:groups=rebalancer.dev,resources=resourcerebalancers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=rebalancer.dev,resources=resourcerebalancers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=rebalancer.dev,resources=resourcerebalancers/finalizers,verbs=update
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;delete;patch;update
+// +kubebuilder:rbac:groups=metrics.k8s.io,resources=pods,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -59,36 +74,35 @@ func (r *ResourceRebalancerReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	//Validating Namespace
-	if resourceRebalancer.Spec.NamespacePrefix == "" {
-		logf.Log.Error(nil, "NamespacePrefix is required in ResourceRebalancer spec")
+	if resourceRebalancer.Spec.UserNamespace == "" {
+		logf.Log.Error(nil, "userNamespace is required in ResourceRebalancer spec")
 		return ctrl.Result{}, nil
 	}
 	// validating CPU thresholds
-	if resourceRebalancer.Spec.CpuThreshold == "" {
+	if resourceRebalancer.Spec.CpuThreshold <= 0 {
 		logf.Log.Error(nil, "CpuThreshold is required in ResourceRebalancer spec")
 		return ctrl.Result{}, nil
 	}
 	// validating Memory thresholds
-	if resourceRebalancer.Spec.MemoryThreshold == "" {
+	if resourceRebalancer.Spec.MemoryThreshold <= 0 {
 		logf.Log.Error(nil, "MemoryThreshold is required in ResourceRebalancer spec")
 		return ctrl.Result{}, nil
 	}
 	// validating EnableCleanup
-	if resourceRebalancer.Spec.EnableCleanup == nil {
+	if resourceRebalancer.Spec.EnableCleanup == false {
 		logf.Log.Error(nil, "EnableCleanup is required in ResourceRebalancer spec")
 		return ctrl.Result{}, nil
 	}
 
 	logf.Log.V(1).Info("CR loaded successfully")
 	// start operator logic here (e.g., start scanning cluster, manage resources, etc.)
-	namespacePrefix := resourceRebalancer.Spec.NamespacePrefix
+	userNamespace := resourceRebalancer.Spec.UserNamespace
 	cpu := resourceRebalancer.Spec.CpuThreshold
 	memory := resourceRebalancer.Spec.MemoryThreshold
 	cleanup := resourceRebalancer.Spec.EnableCleanup
 
-	go internal.ScanCluster(r.metricsClient, namespacePrefix, cpu, memory, cleanup)
-	go internal.StartIdleCleanerWorker(r.Clientset)
-
+	go worker.ScanCluster(r.MetricsClient, cpu, memory, userNamespace, cleanup)
+	go scanner.StartIdleCleanerWorker(r.Clientset)
 	return ctrl.Result{}, nil
 }
 

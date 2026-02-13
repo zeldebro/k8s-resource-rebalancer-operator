@@ -32,9 +32,9 @@ type ResourceRebalancerSpec struct {
 
 	// foo is an example field of ResourceRebalancer. Edit resourcerebalancer_types.go to remove/update
 	// +optional
-	NamespacePrefix string `json:"namespacePrefix"`
-	CpuThreshold    string `json:"cpuThreshold"`
-	MemoryThreshold string `json:"memoryThreshold"`
+	UserNamespace   string `json:"userNamespace"`
+	CpuThreshold    int64  `json:"cpuThreshold"`
+	MemoryThreshold int64  `json:"memoryThreshold"`
 	EnableCleanup   bool   `json:"enableCleanup"`
 }
 

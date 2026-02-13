@@ -1,0 +1,9 @@
+apiVersion: rebalancer.dev/v1
+kind: ResourceRebalancer
+metadata:
+  name: smart-rebalancer
+spec:
+  userNamespace: "default"
+  cpuThreshold: 50
+  memoryThreshold: 500
+  enableCleanup: true

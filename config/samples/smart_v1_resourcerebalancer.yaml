@@ -1,4 +1,4 @@
-apiVersion: smart.smart.dev/v1
+apiVersion: rebalancer.dev/v1
 kind: ResourceRebalancer
 metadata:
   labels:

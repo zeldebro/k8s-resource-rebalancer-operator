@@ -19,7 +19,7 @@ package main
 import (
 	"crypto/tls"
 	"flag"
-	"k8s-resource-rebalancer-operator/internal"
+	"github.com/zeldebro/k8s-resource-rebalancer-operator/internal/kube"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -179,20 +179,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := (&controller.ResourceRebalancerReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ResourceRebalancer")
+	// calling Operator
+	clientset, metricsClient, err := kube.ConnectCluster()
+	if err != nil {
+		setupLog.Error(err, "unable to connect to cluster")
 		os.Exit(1)
 	}
 
-	// calling Operator
-	_, err = internal.
-	if err != nil {
-		setupLog.Error(err, "unable to connect to cluster")
-	} else {
-		setupLog.Info("successfully connected to cluster")
+	setupLog.Info("Connected to cluster successfully")
+
+	if err := (&controller.ResourceRebalancerReconciler{
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		Clientset:     clientset,
+		MetricsClient: metricsClient,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ResourceRebalancer")
+		os.Exit(1)
 	}
 
 	// +kubebuilder:scaffold:builder

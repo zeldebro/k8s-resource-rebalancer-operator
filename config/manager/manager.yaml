@@ -10,7 +10,7 @@ metadata:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: controller-manager
+  name: k8s-resource-rebalancer
   namespace: system
   labels:
     control-plane: controller-manager
@@ -63,7 +63,8 @@ spec:
         args:
           - --leader-elect
           - --health-probe-bind-address=:8081
-        image: controller:latest
+        image: k8s-resource-rebalancer-operator:v3
+        imagePullPolicy: IfNotPresent
         name: manager
         ports: []
         securityContext:

@@ -1,7 +1,7 @@
 # This rule is not used by the project k8s-resource-rebalancer-operator itself.
 # It is provided to allow the cluster admin to help manage permissions for users.
 #
-# Grants read-only access to smart.smart.dev resources.
+# Grants read-only access to rebalancer.dev resources.
 # This role is intended for users who need visibility into these resources
 # without permissions to modify them. It is ideal for monitoring purposes and limited-access viewing.
 
@@ -14,7 +14,7 @@ metadata:
   name: resourcerebalancer-viewer-role
 rules:
 - apiGroups:
-  - smart.smart.dev
+  - rebalancer.dev
   resources:
   - resourcerebalancers
   verbs:
@@ -22,7 +22,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - smart.smart.dev
+  - rebalancer.dev
   resources:
   - resourcerebalancers/status
   verbs:

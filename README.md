@@ -1,135 +1,243 @@
-# k8s-resource-rebalancer-operator
-// TODO(user): Add simple overview of use/purpose
+🚀 Kubernetes Resource Rebalancer Operator
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+A production-ready Kubernetes operator built with Kubebuilder + Golang that automatically detects idle pods consuming CPU/memory and rebalances cluster resources by cleaning them safely.
 
-## Getting Started
+This operator helps prevent cluster resource starvation and improves scheduling efficiency — especially useful for Kubeflow, ML workloads, and multi-tenant clusters.
 
-### Prerequisites
-- go version v1.24.6+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+⸻
 
-### To Deploy on the cluster
-**Build and push your image to the location specified by `IMG`:**
+📌 Problem Statement
 
-```sh
-make docker-build docker-push IMG=<some-registry>/k8s-resource-rebalancer-operator:tag
-```
+In many Kubernetes clusters (especially ML/Kubeflow environments):
+•	Users leave notebook pods running after work
+•	Idle pods keep reserving CPU & memory
+•	New pods go Pending (Insufficient CPU/Memory)
+•	Cluster resources remain blocked
 
-**NOTE:** This image ought to be published in the personal registry you specified.
-And it is required to have access to pull the image from the working environment.
-Make sure you have the proper permission to the registry if the above commands don’t work.
+Manual cleanup is painful.
 
-**Install the CRDs into the cluster:**
+⸻
 
-```sh
+💡 Solution (What this operator does)
+
+This operator automatically:
+1.	Monitors cluster resource usage (CPU + memory)
+2.	Detects idle pods (below threshold usage)
+3.	Adds them to internal work queue
+4.	Safely scales or deletes idle workloads
+5.	Frees resources for pending pods
+6.	Improves cluster utilization automatically
+
+All logic runs continuously using:
+•	Informers
+•	Workqueue
+•	Controller-runtime
+•	Metrics-server API
+
+⸻
+
+🧠 Architecture
+
+CRD (User YAML)
+↓
+Controller (Reconcile loop)
+↓
+Operator Logic
+↓
+Metrics API → Detect idle pods
+↓
+Queue (FIFO)
+↓
+Worker → Clean resources
+
+
+⸻
+
+✨ Features
+•	⚡ Real-time pod monitoring using Informers
+•	📊 CPU & memory based cleanup
+•	🔁 Workqueue based safe processing
+•	🧠 Smart namespace filtering
+•	🛡 Production-safe retry logic
+•	☁ Works with Kind / EKS / AKS / GKE
+•	🔥 Built fully in Golang
+
+⸻
+
+📦 Example Use Case
+
+Kubeflow notebook environment:
+•	Notebook pods run for 24 hours
+•	Users forget to stop notebooks
+•	Cluster becomes full
+•	New training jobs stay Pending
+
+👉 Operator detects low CPU usage notebooks
+👉 Deletes/scales them safely
+👉 New jobs get scheduled
+
+⸻
+
+🛠 Tech Stack
+•	Golang
+•	Kubebuilder
+•	client-go
+•	controller-runtime
+•	metrics-server
+•	Kubernetes CRD
+•	Workqueue pattern
+
+⸻
+
+⚙️ CRD Example
+
+User deploys operator using this YAML:
+
+apiVersion: rebalancer.dev/v1
+kind: ResourceRebalancer
+metadata:
+name: rebalance-sample
+spec:
+userNamespace: "mc-"
+cpuThreshold: 50
+memoryThreshold: 500
+enableCleanup: true
+
+Parameters
+
+Field	Description
+userNamespace	Monitor only these namespaces
+cpuThreshold	CPU usage below this = idle
+memoryThreshold	Memory below this = idle
+enableCleanup	Enable auto cleanup
+
+
+⸻
+
+🚀 Getting Started
+
+Prerequisites
+•	Go 1.22+
+•	Docker
+•	Kubernetes cluster (kind/minikube/EKS)
+•	metrics-server installed
+
+⸻
+
+🐳 Build Docker Image
+
+make docker-build docker-push IMG=<dockerhub-user>/rebalancer:latest
+
+For local kind cluster:
+
+docker build -t rebalancer:latest .
+kind load docker-image rebalancer:latest
+
+
+⸻
+
+📦 Install CRD
+
 make install
-```
 
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
 
-```sh
-make deploy IMG=<some-registry>/k8s-resource-rebalancer-operator:tag
-```
+⸻
 
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin
-privileges or be logged in as admin.
+🚀 Deploy Operator
 
-**Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
+make deploy IMG=rebalancer:latest
 
-```sh
-kubectl apply -k config/samples/
-```
 
->**NOTE**: Ensure that the samples has default values to test it out.
+⸻
 
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
+📄 Apply CR
 
-```sh
-kubectl delete -k config/samples/
-```
+kubectl apply -f config/samples/
 
-**Delete the APIs(CRDs) from the cluster:**
 
-```sh
-make uninstall
-```
+⸻
 
-**UnDeploy the controller from the cluster:**
+📊 Check Logs
 
-```sh
-make undeploy
-```
+kubectl logs -f deploy/k8s-resource-rebalancer-operator-controller-manager -n k8s-resource-rebalancer
 
-## Project Distribution
+You should see:
 
-Following the options to release and provide this solution to the users.
+Idle pod detected
+Added to queue
+Cleaning resources
 
-### By providing a bundle with all YAML files
 
-1. Build the installer for the image built and published in the registry:
+⸻
 
-```sh
-make build-installer IMG=<some-registry>/k8s-resource-rebalancer-operator:tag
-```
+🧪 Test Scenario
 
-**NOTE:** The makefile target mentioned above generates an 'install.yaml'
-file in the dist directory. This file contains all the resources built
-with Kustomize, which are necessary to install this project without its
-dependencies.
+Create dummy pod:
 
-2. Using the installer
+kubectl run test --image=nginx --requests='cpu=500m,memory=512Mi'
 
-Users can just run 'kubectl apply -f <URL for YAML BUNDLE>' to install
-the project, i.e.:
+Reduce usage → operator detects idle → cleanup triggered.
 
-```sh
-kubectl apply -f https://raw.githubusercontent.com/<org>/k8s-resource-rebalancer-operator/<tag or branch>/dist/install.yaml
-```
+⸻
 
-### By providing a Helm Chart
+🧠 Interview Ready Explanation
 
-1. Build the chart using the optional helm plugin
+If interviewer asks:
 
-```sh
-kubebuilder edit --plugins=helm/v2-alpha
-```
+What does your operator do?
 
-2. See that a chart was generated under 'dist/chart', and users
-can obtain this solution from there.
+Answer:
 
-**NOTE:** If you change the project, you need to update the Helm Chart
-using the same command above to sync the latest changes. Furthermore,
-if you create webhooks, you need to use the above command with
-the '--force' flag and manually ensure that any custom configuration
-previously added to 'dist/chart/values.yaml' or 'dist/chart/manager/manager.yaml'
-is manually re-applied afterwards.
+I built a Kubernetes operator using Golang and Kubebuilder that monitors cluster resource usage in real-time.
+It detects idle workloads consuming CPU/memory and automatically rebalances cluster resources using a workqueue-based controller.
+This prevents pod scheduling failures and improves cluster efficiency in multi-tenant environments like Kubeflow.
 
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
+⸻
 
-**NOTE:** Run `make help` for more information on all potential `make` targets
+🔥 Why this project is strong
 
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
+This project demonstrates:
+•	Kubernetes operator development
+•	CRD design
+•	Controller-runtime
+•	Informers & Workqueue
+•	Production-grade logic
+•	Golang concurrency
+•	Metrics API usage
 
-## License
+👉 Enough to clear any DevOps/SRE interview
 
-Copyright 2026.
+⸻
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+🛣 Roadmap
 
-    http://www.apache.org/licenses/LICENSE-2.0
+Future improvements:
+•	Slack/Email alerts
+•	Auto scaling integration
+•	GPU idle detection
+•	Web UI dashboard
+•	Multi-cluster support
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+⸻
 
+🤝 Contributing
+
+PRs welcome.
+
+If you want to improve:
+•	add GPU cleanup
+•	add Slack alerts
+•	add Prometheus metrics
+
+⸻
+
+⭐ If this helped you
+
+Give a ⭐ on GitHub and connect with me on LinkedIn.
+
+⸻
+
+📜 License
+
+Apache 2.0 License
+Copyright 2026

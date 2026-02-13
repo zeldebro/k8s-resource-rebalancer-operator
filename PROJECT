@@ -6,7 +6,7 @@ cliVersion: 4.11.1
 domain: smart.dev
 layout:
 - go.kubebuilder.io/v4
-projectName: k8s-resource-rebalancer-operator
+projectName: rebalancer-operator
 repo: github.com/zeldebro/k8s-resource-rebalancer-operator
 resources:
 - api:

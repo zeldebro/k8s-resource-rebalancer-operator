@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: k8s-resource-rebalancer-operator
-  newTag: v3
+  newTag: v5

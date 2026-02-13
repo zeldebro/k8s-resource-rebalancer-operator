@@ -2,83 +2,138 @@ package worker
 
 import (
 	"context"
-	"fmt"
+	"strings"
+
+	"github.com/zeldebro/k8s-resource-rebalancer-operator/internal/queue"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/util/workqueue"
-	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
-	"time"
+	"k8s.io/client-go/kubernetes"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-// global queue shared between scanner + worker
-var queue = workqueue.NewRateLimitingQueue(
-	workqueue.DefaultControllerRateLimiter(),
-)
+func StartIdleCleanerWorker(clientset *kubernetes.Clientset) {
 
-// This scans cluster every 30s and pushes idle pods into queue
-func ScanCluster(
-	metricsClient *metricsclient.Clientset,
-	cpuThreshold int64,
-	memThreshold int64,
-	userNamespace string,
-	cleanup bool,
-) {
-
-	fmt.Println("Cluster scanner started...")
+	log := ctrl.Log.WithName("idle-cleaner")
+	log.Info("Idle cleaner worker started")
 
 	for {
 
-		// get metrics ONLY for given namespace
-		metrics, err := metricsClient.MetricsV1beta1().
-			PodMetricses(userNamespace).
-			List(context.TODO(), metav1.ListOptions{})
+		item, shutdown := queue.Q.Get()
+		if shutdown {
+			log.Info("Queue shutdown received")
+			return
+		}
 
-		if err != nil {
-			fmt.Println("Metrics error:", err)
-			time.Sleep(20 * time.Second)
+		key, ok := item.(string)
+		if !ok {
+			log.Error(nil, "Invalid queue item")
+			queue.Q.Done(item)
 			continue
 		}
 
-		for _, pod := range metrics.Items {
+		log.Info("Processing pod", "key", key)
 
-			ns := pod.Namespace
+		parts := strings.Split(key, "/")
+		if len(parts) != 2 {
+			log.Error(nil, "Invalid key format", "key", key)
+			queue.Q.Done(item)
+			continue
+		}
 
-			// safety: skip system namespaces
-			if ns == "kube-system" ||
-				ns == "kube-public" ||
-				ns == "kube-node-lease" ||
-				ns == "local-path-storage" {
+		namespace := parts[0]
+		podName := parts[1]
+		ctx := context.Background()
+
+		pod, err := clientset.CoreV1().
+			Pods(namespace).
+			Get(ctx, podName, metav1.GetOptions{})
+
+		if err != nil {
+			log.Error(err, "Pod not found", "pod", podName, "namespace", namespace)
+			queue.Q.Forget(item)
+			queue.Q.Done(item)
+			continue
+		}
+
+		if len(pod.OwnerReferences) == 0 {
+			log.Info("Standalone pod detected, skipping", "pod", podName)
+			queue.Q.Forget(item)
+			queue.Q.Done(item)
+			continue
+		}
+
+		scaled := false
+
+		for _, owner := range pod.OwnerReferences {
+
+			if owner.Kind != "ReplicaSet" {
 				continue
 			}
 
-			// ensure only user namespace monitored
-			if ns != userNamespace {
+			rs, err := clientset.AppsV1().
+				ReplicaSets(namespace).
+				Get(ctx, owner.Name, metav1.GetOptions{})
+
+			if err != nil {
+				log.Error(err, "Failed fetching ReplicaSet", "rs", owner.Name)
 				continue
 			}
 
-			var totalCPU int64
-			var totalMem int64
+			for _, rsOwner := range rs.OwnerReferences {
 
-			// sum container usage
-			for _, c := range pod.Containers {
-				totalCPU += c.Usage.Cpu().MilliValue()
-				totalMem += c.Usage.Memory().Value() / (1024 * 1024) // Mi
-			}
-
-			// 🔍 idle detection
-			if totalCPU < cpuThreshold && totalMem < memThreshold {
-
-				key := ns + "/" + pod.Name
-				fmt.Println("💤 Idle pod detected:", key,
-					"CPU:", totalCPU, "m",
-					"MEM:", totalMem, "Mi")
-
-				// add to queue only if cleanup enabled
-				if cleanup {
-					queue.Add(key)
+				if rsOwner.Kind != "Deployment" {
+					continue
 				}
+
+				deployName := rsOwner.Name
+				log.Info("Scaling deployment", "deployment", deployName)
+
+				deploy, err := clientset.AppsV1().
+					Deployments(namespace).
+					Get(ctx, deployName, metav1.GetOptions{})
+
+				if err != nil {
+					log.Error(err, "Deployment fetch failed", "deployment", deployName)
+					queue.Q.AddRateLimited(key)
+					queue.Q.Done(item)
+					continue
+				}
+
+				if deploy.Spec.Replicas != nil && *deploy.Spec.Replicas == 0 {
+					log.Info("Deployment already scaled", "deployment", deployName)
+					scaled = true
+					break
+				}
+
+				replicas := int32(0)
+				deploy.Spec.Replicas = &replicas
+
+				_, err = clientset.AppsV1().
+					Deployments(namespace).
+					Update(ctx, deploy, metav1.UpdateOptions{})
+
+				if err != nil {
+					log.Error(err, "Failed scaling deployment", "deployment", deployName)
+					queue.Q.AddRateLimited(key)
+					queue.Q.Done(item)
+					continue
+				}
+
+				log.Info("Deployment scaled to zero", "deployment", deployName)
+				scaled = true
+				break
+			}
+
+			if scaled {
+				break
 			}
 		}
 
-		time.Sleep(30 * time.Second)
+		if !scaled {
+			log.Info("No deployment owner found for pod", "pod", podName)
+		}
+
+		queue.Q.Forget(item)
+		queue.Q.Done(item)
 	}
 }

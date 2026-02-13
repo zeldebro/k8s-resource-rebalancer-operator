@@ -3,7 +3,7 @@ kind: ResourceRebalancer
 metadata:
   name: smart-rebalancer
 spec:
-  userNamespace: "default"
+  userNamespace: "k8s-resource-rebalancer-operator-system"
   cpuThreshold: 50
   memoryThreshold: 500
   enableCleanup: true

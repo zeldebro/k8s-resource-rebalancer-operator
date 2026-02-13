@@ -101,8 +101,8 @@ func (r *ResourceRebalancerReconciler) Reconcile(ctx context.Context, req ctrl.R
 	memory := resourceRebalancer.Spec.MemoryThreshold
 	cleanup := resourceRebalancer.Spec.EnableCleanup
 
-	go worker.ScanCluster(r.MetricsClient, cpu, memory, userNamespace, cleanup)
-	go scanner.StartIdleCleanerWorker(r.Clientset)
+	go scanner.ScanCluster(r.MetricsClient, cpu, memory, userNamespace, cleanup)
+	go worker.StartIdleCleanerWorker(r.Clientset)
 	return ctrl.Result{}, nil
 }
 

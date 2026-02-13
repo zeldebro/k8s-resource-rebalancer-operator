@@ -63,7 +63,7 @@ spec:
         args:
           - --leader-elect
           - --health-probe-bind-address=:8081
-        image: k8s-resource-rebalancer-operator:v3
+        image: k8s-resource-rebalancer-operator:v5
         imagePullPolicy: IfNotPresent
         name: manager
         ports: []

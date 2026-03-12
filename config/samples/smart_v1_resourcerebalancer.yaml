@@ -6,4 +6,11 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: resourcerebalancer-sample
 spec:
-  # TODO(user): Add fields here
+  # Namespace to monitor for idle pods
+  userNamespace: "default"
+  # CPU usage threshold in millicores — pods below this are considered idle
+  cpuThreshold: 50
+  # Memory usage threshold in MiB — pods below this are considered idle
+  memoryThreshold: 500
+  # Set to true to enable automatic scale-down of idle deployments
+  enableCleanup: true

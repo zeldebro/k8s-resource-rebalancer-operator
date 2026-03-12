@@ -1,0 +1,37 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go
+*.test
+*.out
+cover.out
+vendor/
+
+# Build artifacts
+dist/
+Dockerfile.cross
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Kubernetes
+*.kubeconfig
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+

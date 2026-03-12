@@ -18,17 +18,10 @@ func StartIdleCleanerWorker(clientset *kubernetes.Clientset) {
 
 	for {
 
-		item, shutdown := queue.Q.Get()
+		key, shutdown := queue.Q.Get()
 		if shutdown {
 			log.Info("Queue shutdown received")
 			return
-		}
-
-		key, ok := item.(string)
-		if !ok {
-			log.Error(nil, "Invalid queue item")
-			queue.Q.Done(item)
-			continue
 		}
 
 		log.Info("Processing pod", "key", key)
@@ -36,7 +29,7 @@ func StartIdleCleanerWorker(clientset *kubernetes.Clientset) {
 		parts := strings.Split(key, "/")
 		if len(parts) != 2 {
 			log.Error(nil, "Invalid key format", "key", key)
-			queue.Q.Done(item)
+			queue.Q.Done(key)
 			continue
 		}
 
@@ -50,15 +43,15 @@ func StartIdleCleanerWorker(clientset *kubernetes.Clientset) {
 
 		if err != nil {
 			log.Error(err, "Pod not found", "pod", podName, "namespace", namespace)
-			queue.Q.Forget(item)
-			queue.Q.Done(item)
+			queue.Q.Forget(key)
+			queue.Q.Done(key)
 			continue
 		}
 
 		if len(pod.OwnerReferences) == 0 {
 			log.Info("Standalone pod detected, skipping", "pod", podName)
-			queue.Q.Forget(item)
-			queue.Q.Done(item)
+			queue.Q.Forget(key)
+			queue.Q.Done(key)
 			continue
 		}
 
@@ -95,7 +88,7 @@ func StartIdleCleanerWorker(clientset *kubernetes.Clientset) {
 				if err != nil {
 					log.Error(err, "Deployment fetch failed", "deployment", deployName)
 					queue.Q.AddRateLimited(key)
-					queue.Q.Done(item)
+					queue.Q.Done(key)
 					continue
 				}
 
@@ -115,7 +108,7 @@ func StartIdleCleanerWorker(clientset *kubernetes.Clientset) {
 				if err != nil {
 					log.Error(err, "Failed scaling deployment", "deployment", deployName)
 					queue.Q.AddRateLimited(key)
-					queue.Q.Done(item)
+					queue.Q.Done(key)
 					continue
 				}
 
@@ -133,7 +126,7 @@ func StartIdleCleanerWorker(clientset *kubernetes.Clientset) {
 			log.Info("No deployment owner found for pod", "pod", podName)
 		}
 
-		queue.Q.Forget(item)
-		queue.Q.Done(item)
+		queue.Q.Forget(key)
+		queue.Q.Done(key)
 	}
 }

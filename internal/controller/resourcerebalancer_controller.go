@@ -89,7 +89,7 @@ func (r *ResourceRebalancerReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, nil
 	}
 	// validating EnableCleanup
-	if resourceRebalancer.Spec.EnableCleanup == false {
+	if !resourceRebalancer.Spec.EnableCleanup {
 		logf.Log.Error(nil, "EnableCleanup is required in ResourceRebalancer spec")
 		return ctrl.Result{}, nil
 	}

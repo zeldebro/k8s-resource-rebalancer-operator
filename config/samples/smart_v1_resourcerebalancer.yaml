@@ -2,7 +2,7 @@ apiVersion: rebalancer.dev/v1
 kind: ResourceRebalancer
 metadata:
   labels:
-    app.kubernetes.io/name: k8s-resource-rebalancer-operator
+    app.kubernetes.io/name: rebalancer
     app.kubernetes.io/managed-by: kustomize
   name: resourcerebalancer-sample
 spec:

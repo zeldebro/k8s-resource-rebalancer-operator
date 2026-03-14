@@ -34,16 +34,16 @@ import (
 )
 
 // namespace where the project is deployed in
-const namespace = "k8s-resource-rebalancer-operator-system"
+const namespace = "rebalancer-system"
 
 // serviceAccountName created for the project
-const serviceAccountName = "k8s-resource-rebalancer-operator-controller-manager"
+const serviceAccountName = "rebalancer-sa"
 
 // metricsServiceName is the name of the metrics service of the project
-const metricsServiceName = "k8s-resource-rebalancer-operator-controller-manager-metrics-service"
+const metricsServiceName = "rebalancer-svc"
 
 // metricsRoleBindingName is the name of the RBAC that will be created to allow get the metrics data
-const metricsRoleBindingName = "k8s-resource-rebalancer-operator-metrics-binding"
+const metricsRoleBindingName = "rebalancer-metrics-binding"
 
 var _ = Describe("Manager", Ordered, func() {
 	var controllerPodName string
@@ -146,7 +146,7 @@ var _ = Describe("Manager", Ordered, func() {
 			verifyControllerUp := func(g Gomega) {
 				// Get the name of the controller-manager pod
 				cmd := exec.Command("kubectl", "get",
-					"pods", "-l", "control-plane=controller-manager",
+					"pods", "-l", "app=rebalancer",
 					"-o", "go-template={{ range .items }}"+
 						"{{ if not .metadata.deletionTimestamp }}"+
 						"{{ .metadata.name }}"+
@@ -159,7 +159,7 @@ var _ = Describe("Manager", Ordered, func() {
 				podNames := utils.GetNonEmptyLines(podOutput)
 				g.Expect(podNames).To(HaveLen(1), "expected 1 controller pod running")
 				controllerPodName = podNames[0]
-				g.Expect(controllerPodName).To(ContainSubstring("controller-manager"))
+				g.Expect(controllerPodName).To(ContainSubstring("rebalancer"))
 
 				// Validate the pod's status
 				cmd = exec.Command("kubectl", "get",
@@ -176,7 +176,7 @@ var _ = Describe("Manager", Ordered, func() {
 		It("should ensure the metrics endpoint is serving metrics", func() {
 			By("creating a ClusterRoleBinding for the service account to allow access to metrics")
 			cmd := exec.Command("kubectl", "create", "clusterrolebinding", metricsRoleBindingName,
-				"--clusterrole=k8s-resource-rebalancer-operator-metrics-reader",
+				"--clusterrole=rebalancer-metrics-reader",
 				fmt.Sprintf("--serviceaccount=%s:%s", namespace, serviceAccountName),
 			)
 			_, err := utils.Run(cmd)

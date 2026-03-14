@@ -1,32 +1,67 @@
-# Kubernetes Resource Rebalancer Operator
+<p align="center">
+  <img src="https://raw.githubusercontent.com/kubernetes/kubernetes/master/logo/logo.svg" width="120" alt="Kubernetes Logo"/>
+</p>
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/zeldebro/k8s-resource-rebalancer-operator)](https://go.dev/)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![CI](https://github.com/zeldebro/k8s-resource-rebalancer-operator/actions/workflows/ci.yml/badge.svg)](https://github.com/zeldebro/k8s-resource-rebalancer-operator/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/zeldebro/k8s-resource-rebalancer-operator)](https://goreportcard.com/report/github.com/zeldebro/k8s-resource-rebalancer-operator)
-[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](CONTRIBUTING.md)
+<h1 align="center">⚡ Kubernetes Resource Rebalancer Operator</h1>
 
-> A Kubernetes operator that monitors pod resource usage in real time and automatically scales down idle workloads to free cluster resources.
+<p align="center">
+  <em>Automatically detect and scale down idle workloads to reclaim cluster resources — in real time.</em>
+</p>
+
+<p align="center">
+  <a href="https://go.dev/"><img src="https://img.shields.io/github/go-mod/go-version/zeldebro/k8s-resource-rebalancer-operator?style=for-the-badge&logo=go&logoColor=white&color=00ADD8" alt="Go Version"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge&logo=apache&logoColor=white" alt="License"/></a>
+  <a href="https://github.com/zeldebro/k8s-resource-rebalancer-operator/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/zeldebro/k8s-resource-rebalancer-operator/ci.yml?style=for-the-badge&logo=github-actions&logoColor=white&label=CI" alt="CI Status"/></a>
+</p>
+
+<p align="center">
+  <a href="https://goreportcard.com/report/github.com/zeldebro/k8s-resource-rebalancer-operator"><img src="https://goreportcard.com/badge/github.com/zeldebro/k8s-resource-rebalancer-operator?style=for-the-badge" alt="Go Report Card"/></a>
+  <a href="https://github.com/zeldebro/k8s-resource-rebalancer-operator/issues"><img src="https://img.shields.io/github/issues/zeldebro/k8s-resource-rebalancer-operator?style=for-the-badge&logo=github&color=orange" alt="Issues"/></a>
+  <a href="https://github.com/zeldebro/k8s-resource-rebalancer-operator/pulls"><img src="https://img.shields.io/github/issues-pr/zeldebro/k8s-resource-rebalancer-operator?style=for-the-badge&logo=github&color=purple" alt="PRs"/></a>
+  <a href="https://github.com/zeldebro/k8s-resource-rebalancer-operator/stargazers"><img src="https://img.shields.io/github/stars/zeldebro/k8s-resource-rebalancer-operator?style=for-the-badge&logo=github&color=yellow" alt="Stars"/></a>
+</p>
+
+<p align="center">
+  <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/contributions-welcome-brightgreen?style=for-the-badge&logo=opensourceinitiative&logoColor=white" alt="Contributions Welcome"/></a>
+  <a href="https://github.com/zeldebro/k8s-resource-rebalancer-operator/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22"><img src="https://img.shields.io/badge/good%20first%20issues-ready-blueviolet?style=for-the-badge&logo=bookstack&logoColor=white" alt="Good First Issues"/></a>
+  <a href="https://kubernetes.io/"><img src="https://img.shields.io/badge/platform-Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white" alt="Platform: Kubernetes"/></a>
+</p>
+
+<p align="center">
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-architecture">Architecture</a> •
+  <a href="#-contributing">Contributing</a> •
+  <a href="#-roadmap">Roadmap</a>
+</p>
 
 ---
 
-## The Problem
+> 🚀 **A Kubernetes operator that monitors pod resource usage in real time and automatically scales down idle workloads to free cluster resources.**
 
-In shared Kubernetes clusters (especially Kubeflow, dev environments, and multi-tenant setups):
+---
 
-- 😴 Users start pods/notebooks and **forget to stop them**
-- 🔒 Idle pods continue **reserving CPU and memory**
-- ❌ New pods stay in **Pending** state due to insufficient resources
-- ⏰ Kubernetes TTL controllers can delete pods after a fixed time, but resources remain **blocked until TTL expires**
-- 🔧 Manual cleanup is **risky and time-consuming**
+## 🔴 The Problem
 
-## The Solution
+In shared Kubernetes clusters (especially **Kubeflow**, dev environments, and multi-tenant setups):
+
+| Problem | Impact |
+|---------|--------|
+| 😴 Users start pods/notebooks and **forget to stop them** | Resources wasted 24/7 |
+| 🔒 Idle pods continue **reserving CPU and memory** | Cluster capacity exhausted |
+| ❌ New pods stay in **Pending** state | Developers blocked |
+| ⏰ TTL controllers delete pods after fixed time | Resources **blocked until TTL expires** |
+| 🔧 Manual cleanup is **risky and time-consuming** | Ops burden increases |
+
+## ✅ The Solution
 
 This operator **watches pod metrics in real time** and automatically scales down deployments whose pods are idle — freeing resources immediately for workloads that actually need them.
 
+> 💡 **Unlike TTL-based approaches**, this operator reacts to *actual resource usage*, not just time.
+
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -58,7 +93,7 @@ This operator **watches pod metrics in real time** and automatically scales down
 
 ---
 
-## Features
+## ✨ Features
 
 - ✅ **Real-time monitoring** — Polls metrics-server continuously (not time-based TTL)
 - ✅ **Configurable thresholds** — Set CPU and memory idle thresholds per namespace
@@ -70,7 +105,7 @@ This operator **watches pod metrics in real time** and automatically scales down
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
 
@@ -112,8 +147,7 @@ kubectl apply -f config/samples/smart_v1_resourcerebalancer.yaml
 
 ```bash
 # Check operator logs
-kubectl logs -f deploy/k8s-resource-rebalancer-controller-manager \
-  -n k8s-resource-rebalancer-operator-system
+kubectl logs -f deploy/rebalancer -n rebalancer-system
 
 # Check CR status
 kubectl get resourcerebalancers
@@ -121,7 +155,7 @@ kubectl get resourcerebalancers
 
 ---
 
-## Local Development
+## 🛠️ Local Development
 
 ### Prerequisites
 
@@ -181,7 +215,7 @@ make test-e2e      # End-to-end tests (creates a Kind cluster)
 
 ---
 
-## Configuration Reference
+## 📋 Configuration Reference
 
 ### CRD Spec Fields
 
@@ -194,7 +228,7 @@ make test-e2e      # End-to-end tests (creates a Kind cluster)
 
 ---
 
-## Tech Stack
+## 🧰 Tech Stack
 
 | Technology | Purpose |
 |------------|---------|
@@ -206,7 +240,7 @@ make test-e2e      # End-to-end tests (creates a Kind cluster)
 
 ---
 
-## Roadmap
+## 🗺️ Roadmap
 
 We welcome contributions for any of these! Check [issues](https://github.com/zeldebro/k8s-resource-rebalancer-operator/issues) for the latest.
 
@@ -225,7 +259,7 @@ We welcome contributions for any of these! Check [issues](https://github.com/zel
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
 We love contributions! Whether it's a bug fix, feature, documentation improvement, or just a typo fix — every contribution matters.
 
@@ -248,13 +282,13 @@ Look for issues labeled [`good first issue`](https://github.com/zeldebro/k8s-res
 
 ---
 
-## License
+## 📄 License
 
 This project is licensed under the Apache License 2.0 — see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## Star History
+## ⭐ Star History
 
 If you find this project useful, please consider giving it a ⭐ — it helps others discover it!
 
